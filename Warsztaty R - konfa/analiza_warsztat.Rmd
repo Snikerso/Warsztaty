@@ -3,66 +3,6 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-Cenzor
-```{r}
-
-
-cenzo <- read.csv2("dane/C_04.csv", header = TRUE, sep = ";")
-
-
-cenzo <- select(cenzo,DataWNazwie ,GazeControlType, LiczbaSakadLeweOko, LiczbaKasowaĹ.ZnakĂłw )
-
-cenzo$DataWNazwie <- 4
-
-write.csv2(cenzo,file="./dane/C_4.csv", eol = "\n",sep = ";", dec = ",")
-
-
-
-```
-
-
-Check
-```{r}
-
-test <- read.csv2("./dane/C_1.csv", header = TRUE, sep = ";")
-
-
-```
-
-
-
-
-
-Działanie warunków if
-```{r}
-
-if(a>5){
-   b = a*a
-}
-
-```
-
-
-Działanie pętli for
-```{r}
-
-
-
-
-```
-
-
-
-
-Zadanie. 
-Stwórz w pętli for warunek if
-```{r}
-
-
-
-
-```
-
 
 
 
@@ -112,26 +52,7 @@ Zrobić to samo tylko na danych o nazwie  z "C" w nazwie
 
 ```{r}
 
-myfiles2 <- list.files("./dane/", pattern="C_*", full.names=T)
-
-names(myfiles2) <- seq_along(as.list(myfiles2))
-
-
-#trzeba stworzyć pustą ramke po to żeby miały gdzie się miała zapisywać nowa większa tablica danych.
-dane_do_dalszej_analizy <-data.frame()
-
-
-for(i in myfiles2){
-  nazwa_pliku <- paste(i)
-  
-  pojedyncza_dana <- read.csv2(nazwa_pliku, header = TRUE, sep = ";")
-  
-  dane_do_dalszej_analizy <- rbind(dane_do_dalszej_analizy,pojedyncza_dana)
-  
-  
-}
-
-write.csv2(dane_do_dalszej_analizy, file="dane_do_dalszej_analizy.csv", sep = ";")
+#można skopjować powyższy kod i go zmodyfikować
 
 
 ```
@@ -147,6 +68,8 @@ Wybieramy te dane, które chcemy użyć do analizy.
 ```{r}
 
 library(dplyr)
+library(car)
+library(ggplot2)
 
 ```
 
@@ -169,7 +92,7 @@ krok 1. Sprawdzenie normalności rozkładu
 
 Można to zrobić na dwa sposoby poprostu 
 
-Uwaga ! Przy dużej ilości danych test shaprio wilka może dalej być istotny, a rozkład normalny 
+Uwaga ! Przy dużej ilości danych test shaprio wilka może dalej być istotny, a rozkład normalny.
 
 ```{r}
 
@@ -185,39 +108,95 @@ shapiro.test(dane_do_anova$LiczbaSakadLeweOko)
 
 
 
-qplot(sample = dane_do_anova$logcolumn, stat="qq")
+qplot(sample = dane_do_anova$LiczbaSakadLeweOko, stat="qq")
 
 
 ```
 
 
-krok 2. Spradzić jednorodność wariancji
+
+krok 2.a Ewentualne poprawki normalności
 ```{r}
 
-leveneTest( sus_anowa_usability$Usability,sus_anowa_usability$gazeControlType, center = median)
+dane_do_anova$logcolumn<- log(dane_do_anova$LiczbaSakadLeweOko)
 
 
-fligner.test(ĹšredniCzasWpisywaniaCyfryMs ~  GazeControlType, scalone_telephonpad)
+histogram_log <- ggplot(dane_do_anova, aes(logcolumn)) +
+geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+labs(x = "Czas", y = "Liczba") +  stat_function(fun = dnorm, args = list(mean = mean(dane_do_anova$logcolumn, na.rm = TRUE), sd = sd(dane_do_anova$logcolumn, na.rm = TRUE)), colour = "black", size = 1)
+
+
+histogram_log
+
+shapiro.test(dane_do_anova$logcolumn)
+
+
+```
+
+krok 2.a Ewentualne poprawki normalności
+
+```{r}
+
+dane_do_anova$sqrt_LiczbaSakadLeweOko <- sqrt(dane_do_anova$LiczbaSakadLeweOko) 
+
+
+histogram_sqrt <- ggplot(dane_do_anova, aes(sqrt_LiczbaSakadLeweOko)) +
+geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+labs(x = "Czas", y = "Liczba") +  stat_function(fun = dnorm, args = list(mean = mean(dane_do_anova$sqrt_LiczbaSakadLeweOko, na.rm = TRUE), sd = sd(dane_do_anova$sqrt_LiczbaSakadLeweOko, na.rm = TRUE)), colour = "black", size = 1)
+
+
+histogram_sqrt
+
+shapiro.test(dane_do_anova$sqrt_LiczbaSakadLeweOko)
+
+
+
+qplot(sample = dane_do_anova$sqrt_LiczbaSakadLeweOko, stat="qq")
 
 
 ```
 
 
-krok 3. Ewentualne poprawki normalności
 ```{r}
 
 
+dane_do_anova$recLiczbaSakad <- 1/(dane_do_anova$LiczbaSakadLeweOko + 1)
+
+histogram_rec <- ggplot(dane_do_anova, aes(recLiczbaSakad)) +
+geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+labs(x = "Czas", y = "Liczba") +  stat_function(fun = dnorm, args = list(mean = mean(dane_do_anova$recLiczbaSakad, na.rm = TRUE), sd = sd(dane_do_anova$recLiczbaSakad, na.rm = TRUE)), colour = "black", size = 1)
+
+
+histogram_rec
+
+shapiro.test(dane_do_anova$recLiczbaSakad)
 
 
 ```
+
+
+
+krok 3. Spradzić jednorodność wariancji
+```{r}
+
+leveneTest( dane_do_anova$Usability,dane_do_anova$gazeControlType, center = median)
+
+
+fligner.test(LiczbaSakadLeweOko ~  GazeControlType, dane_do_anova)
+
+
+```
+
 
 
 
 krok 4. Przeprowadzenie testu parametrycznego bądź nieparametrycznego
 ```{r}
 
-anova <- aov(nasza_nowa_duza_tabela$ ~ nasza_nowa_duza_tabela$)
-TukeyHSD(aov)
+
+
+anova <- aov(dane_do_anova$logcolumn ~ dane_do_anova$GazeControlType  )
+TukeyHSD(anova)
 
 
 ```
@@ -227,7 +206,11 @@ TukeyHSD(aov)
 Dla pewności Test nieparametryczny
 ```{r}
 
-kruskal.test( ~ GazeControlType, data = dane_do_anova)
+kruskal.test( LiczbaSakadLeweOko ~ GazeControlType, data = dane_do_anova)
+
+
+pairwise.wilcox.test(dane_do_anova$LiczbaSakadLeweOko, dane_do_anova$GazeControlType,
+                 p.adjust.method = "BH")
 
 ```
 
